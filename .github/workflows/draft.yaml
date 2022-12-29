@@ -1,0 +1,30 @@
+name: Draft
+
+on:
+  workflow_dispatch:
+  push:
+    # trigger only on main branch
+    branches:
+      - main
+    # trigger only on changes to the following files
+    paths:
+      - "kilroy_face_reddit/src/**"
+      - "kilroy_face_reddit/LICENSE"
+      - "kilroy_face_reddit/README.md"
+      - "kilroy_face_reddit/poetry.lock"
+      - "kilroy_face_reddit/pyproject.toml"
+      - ".github/workflows/draft.yaml"
+      - ".github/release-drafter.yaml"
+
+jobs:
+  draft:
+    name: Update draft release
+    # better to use pinned version here
+    runs-on: ubuntu-latest
+    steps:
+      - uses: release-drafter/release-drafter@v5
+        with:
+          config-name: release-drafter.yaml
+          disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

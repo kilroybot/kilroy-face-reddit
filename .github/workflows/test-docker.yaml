@@ -1,0 +1,56 @@
+name: Docker tests
+
+on:
+  workflow_dispatch:
+  push:
+    # trigger only on main branch
+    branches:
+      - main
+    # trigger only on changes to the following files
+    paths:
+      - "kilroy_face_reddit/src/**"
+      - "kilroy_face_reddit/tests/**"
+      - "kilroy_face_reddit/poetry.lock"
+      - "kilroy_face_reddit/pyproject.toml"
+      - "environment.yaml"
+      - "requirements.txt"
+      - "entrypoint.sh"
+      - "Dockerfile"
+      - ".github/workflows/test-docker.yaml"
+  pull_request:
+    # trigger only on main branch
+    branches:
+      - main
+    # trigger only on changes to the following files
+    paths:
+      - "kilroy_face_reddit/src/**"
+      - "kilroy_face_reddit/tests/**"
+      - "kilroy_face_reddit/poetry.lock"
+      - "kilroy_face_reddit/pyproject.toml"
+      - "environment.yaml"
+      - "requirements.txt"
+      - "entrypoint.sh"
+      - "Dockerfile"
+      - ".github/workflows/test-docker.yaml"
+
+jobs:
+  test-docker:
+    name: Run tests inside Docker container
+    runs-on: ubuntu-latest
+    steps:
+      - # get repository code
+        name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build the image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          target: test
+          load: true
+          tags: kilroy-face-reddit:test
+          cache-from: type=gha, scope=${{ github.workflow }}
+          cache-to: type=gha, mode=max, scope=${{ github.workflow }}
+      - name: Run tests
+        run: docker run --rm kilroy-face-reddit:test
