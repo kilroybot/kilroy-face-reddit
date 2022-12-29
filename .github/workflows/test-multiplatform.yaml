@@ -1,0 +1,103 @@
+name: Multiplatform tests
+
+on:
+  workflow_dispatch:
+  push:
+    # trigger only on main branch
+    branches:
+      - main
+    # trigger only on changes to the following files
+    paths:
+      - "kilroy_face_reddit/src/**"
+      - "kilroy_face_reddit/tests/**"
+      - "kilroy_face_reddit/poetry.lock"
+      - "kilroy_face_reddit/pyproject.toml"
+      - "environment.yaml"
+      - "requirements.txt"
+      - ".github/workflows/test-multiplatform.yaml"
+  pull_request:
+    # trigger only on main branch
+    branches:
+      - main
+    # trigger only on changes to the following files
+    paths:
+      - "kilroy_face_reddit/src/**"
+      - "kilroy_face_reddit/tests/**"
+      - "kilroy_face_reddit/poetry.lock"
+      - "kilroy_face_reddit/pyproject.toml"
+      - "environment.yaml"
+      - "requirements.txt"
+      - ".github/workflows/test-multiplatform.yaml"
+
+# env for all jobs
+env:
+  CONDA_CACHE_DIR: ~/conda_pkgs_dir
+  POETRY_CACHE_DIR: ~/.cache/pypoetry
+  PIP_CACHE_DIR: ~/.cache/pip
+  # increase this value to manually reset cache
+  CACHE_NUMBER: 0
+
+jobs:
+  test:
+    name: Run tests
+    strategy:
+      # don't stop all tests if one fails
+      fail-fast: false
+      matrix:
+        # better to use pinned versions here
+        config:
+          - { os: ubuntu-latest, shell: bash -l }
+          - { os: macos-latest, shell: bash -l }
+          - { os: windows-latest, shell: cmd /C CALL }
+    runs-on: ${{ matrix.config.os }}
+    defaults:
+      run:
+        # necessary for conda to work
+        shell: ${{ matrix.config.shell }} {0}
+    steps:
+      - # get repository code
+        name: Checkout code
+        uses: actions/checkout@v3
+      - # get conda, poetry and pip cache (persistent between runs)
+        name: Cache packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.CONDA_CACHE_DIR }}
+            ${{ env.POETRY_CACHE_DIR }}
+            ${{ env.PIP_CACHE_DIR }}
+          key: ${{ runner.os }}-pkgs-${{ env.CACHE_NUMBER }}
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10.6"
+      - name: Set up pip cache
+        run: ${{ steps.python.outputs.python-path }} -m pip config set global.cache-dir ${{ env.PIP_CACHE_DIR }}
+      - name: Install poetry
+        run: ${{ steps.python.outputs.python-path }} -m pip install -r requirements.txt
+      - name: Set up poetry cache
+        run: ${{ steps.python.outputs.python-path }} -m poetry config cache-dir ${{ env.POETRY_CACHE_DIR }}
+      - # create and activate conda environment
+        name: Set up environment
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: kilroy-face-reddit
+          environment-file: environment.yaml
+          # necessary for caching to work
+          use-only-tar-bz2: true
+      - # install only dependencies
+        name: Install dependencies
+        working-directory: kilroy_face_reddit
+        run: ${{ steps.python.outputs.python-path }} -m poetry install --no-root --only main,test
+      - # workaround for non-editable install, waiting for https://github.com/python-poetry/poetry/issues/1382
+        name: Build package
+        working-directory: kilroy_face_reddit
+        run: ${{ steps.python.outputs.python-path }} -m poetry build -f wheel
+      - # use pip to install wheel produced in previous step
+        name: Install package
+        working-directory: kilroy_face_reddit
+        # python from conda should be called just by 'python', not 'python3'
+        run: python -m pip install --no-deps --no-index --no-cache-dir --find-links=dist kilroy-face-reddit[test]
+      - name: Run tests
+        run: pytest kilroy_face_reddit
