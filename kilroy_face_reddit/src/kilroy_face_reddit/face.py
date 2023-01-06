@@ -34,7 +34,7 @@ from kilroy_face_reddit.posters import Poster, BasicPoster
 from kilroy_face_reddit.processors import Processor
 from kilroy_face_reddit.restrictions import Restriction
 from kilroy_face_reddit.scoring.modifiers import ScoreModifier
-from kilroy_face_reddit.scoring.raw import Scorer, ScoreScorer
+from kilroy_face_reddit.scoring.raw import Scorer, RelativeScoreScorer
 from kilroy_face_reddit.scraping import Scraper, FrontpageScraper
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class Params(SerializableModel):
     ratelimit_seconds: int = 3600
     poster_type: str = "basic"
     posters_params: Dict[str, Dict[str, Any]] = {}
-    scorer_type: str = "score"
+    scorer_type: str = "relativeScore"
     scorers_params: Dict[str, Dict[str, Any]] = {}
     score_modifier_type: Optional[str] = None
     score_modifiers_params: Dict[str, Dict[str, Any]] = {}
@@ -95,7 +95,7 @@ class ScorerParameter(CategorizableBasedParameter[State, Scorer]):
     # noinspection PyMethodParameters
     @classproperty
     def default_categorizable(cls) -> Type[Scorer]:
-        return ScoreScorer
+        return RelativeScoreScorer
 
 
 class ScoreModifierParameter(
