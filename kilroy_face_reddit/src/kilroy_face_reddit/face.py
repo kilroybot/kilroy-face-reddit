@@ -491,7 +491,7 @@ class RedditFace(RedditFaceBase, Categorizable, ABC):
 
         async with self.state.read_lock() as state:
             submission = await state.client.submission(
-                id=base_repr(id.int, 36)
+                id=base_repr(id.int, 36).lower()
             )
             score = await state.scorer.score(submission)
             if state.score_modifier is not None:
