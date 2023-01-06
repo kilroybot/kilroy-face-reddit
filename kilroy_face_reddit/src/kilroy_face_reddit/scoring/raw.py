@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-from kilroy_face_server_py_sdk import Categorizable, classproperty, normalize
 from asyncpraw.models import Submission
+from kilroy_face_server_py_sdk import Categorizable, classproperty, normalize
 
 
 class Scorer(Categorizable, ABC):
@@ -19,6 +19,13 @@ class Scorer(Categorizable, ABC):
 # Reactions
 
 
-class ScoreScorer(Scorer):
+class RelativeScoreScorer(Scorer):
     async def score(self, post: Submission) -> float:
-        return post.score
+        score = post.score
+        if hasattr(post, "subreddit_subscribers"):
+            subscribers = post.subreddit_subscribers
+        else:
+            if not hasattr(post.subreddit, "subscribers"):
+                await post.subreddit.load()
+            subscribers = post.subreddit.subscribers
+        return score / max(subscribers, 1)
